@@ -1,0 +1,9 @@
+int a = 10;
+if (a > 5 | ++a > 10) { // 앞이 true지만 뒤의 ++a도 실행됨
+    System.out.println(a); // 출력 결과: 11
+}
+
+int b = 10;
+if (b > 5 || ++b > 10) { // 단축 평가 발생! 뒤의 ++b는 무시됨
+    System.out.println(b); // 출력 결과: 10
+}

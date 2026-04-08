@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.CommentMapper">
+    <select id="findByPostId" resultType="com.example.demo.model.Comment">
+        SELECT * FROM comments WHERE post_id = #{postID}
+    </select>
+
+    <select id="findById" parameterType="long" resultType="com.example.demo.model.Comment">
+        SELECT * FROM comments WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.example.demo.model.Comment" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO comments (post_id, content, created_at, updated_at)
+        VALUES (#{postId}, #{content}, NOW(), NOW())
+    </insert>
+
+    <update id="update" parameterType="com.example.demo.model.Comment">
+        UPDATE comments SET content = #{content}, updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="delete" parameterType="long">
+        DELETE FROM comments WHERE id = #{id}
+    </delete>
+</mapper>

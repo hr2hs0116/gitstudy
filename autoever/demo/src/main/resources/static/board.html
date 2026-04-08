@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>게시판</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th,
+        td {
+            border: 1px solid #ccc;
+            padding: 8px;
+        }
+
+        th {
+            background: #f0f0f0;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .comment-section {
+            margin-top: 30px;
+        }
+
+        .comment-table {
+            width: 90%;
+            margin-left: 5%;
+        }
+
+        .comment-table th,
+        .comment-table td {
+            font-size: 0.95em;
+        }
+    </style>
+</head>
+
+<body>
+<h1>게시판</h1>
+
+<!-- 게시글 작성/수정 폼 -->
+<form id="postForm">
+    <input type="hidden" id="postId">
+    <input type="text" id="title" placeholder="제목" required>
+    <input type="text" id="content" placeholder="내용" required>
+    <button type="submit">글 저장</button>
+    <button type="button" id="cancelEdit" class="hidden">취소</button>
+</form>
+
+<!-- 게시글 목록 테이블 -->
+<table>
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>제목</th>
+        <th>내용</th>
+        <th>생성시각</th>
+        <th>수정시각</th>
+        <th>조회수</th>
+        <th>액션</th>
+    </tr>
+    </thead>
+    <tbody id="postsBody"></tbody>
+</table>
+
+<!-- 게시글 상세/댓글 영역 -->
+<div id="detailSection" class="hidden">
+    <h2>게시글 상세</h2>
+    <div id="detailBox"></div>
+    <button onclick="closeDetail()">닫기</button>
+
+    <!-- 댓글 영역 -->
+    <div class="comment-section">
+        <h3>댓글</h3>
+        <form id="commentForm">
+            <input type="hidden" id="commentId">
+            <input type="text" id="commentContent" placeholder="댓글 내용" required>
+            <button type="submit">댓글 저장</button>
+            <button type="button" id="cancelCommentEdit" class="hidden">취소</button>
+        </form>
+        <table class="comment-table">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>내용</th>
+                <th>작성시각</th>
+                <th>수정시각</th>
+                <th>액션</th>
+            </tr>
+            </thead>
+            <tbody id="commentsBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    let currentPostId = null; // 상세보기 중인 게시글 ID
+
+    // 게시글 목록 불러오기
+    function loadPosts() {
+        axios.get('/posts')
+            .then(res => {
+                const posts = res.data;
+                const tbody = document.getElementById('postsBody');
+                tbody.innerHTML = '';
+                posts.forEach(post => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                            <td>${post.id}</td>
+                            <td>${post.title}</td>
+                            <td>${post.content}</td>
+                            <td>${post.createdAt ? post.createdAt.replace('T', ' ').substring(0, 19) : ''}</td>
+                            <td>${post.updatedAt ? post.updatedAt.replace('T', ' ').substring(0, 19) : ''}</td>
+                            <td>${post.viewCount ?? 0}</td>
+                            <td>
+                                <button onclick="viewPost(${post.id})">상세보기</button>
+                                <button onclick="editPost(${post.id})">수정</button>
+                                <button onclick="deletePost(${post.id})">삭제</button>
+                            </td>
+                        `;
+                    tbody.appendChild(tr);
+                });
+            });
+    }
+
+    // 글 작성/수정 폼 제출
+    document.getElementById('postForm').onsubmit = function (e) {
+        e.preventDefault();
+        const id = document.getElementById('postId').value;
+        const title = document.getElementById('title').value;
+        const content = document.getElementById('content').value;
+        if (id) {
+            axios.put(`/posts/${id}`, { title, content })
+                .then(() => {
+                    resetForm();
+                    loadPosts();
+                });
+        } else {
+            axios.post('/posts', { title, content })
+                .then(() => {
+                    resetForm();
+                    loadPosts();
+                });
+        }
+    };
+
+    // 글 수정 버튼 클릭 시
+    window.editPost = function (id) {
+        axios.get(`/posts/${id}/raw`)
+            .then(res => {
+                const post = res.data;
+                document.getElementById('postId').value = post.id;
+                document.getElementById('title').value = post.title;
+                document.getElementById('content').value = post.content;
+                document.getElementById('cancelEdit').classList.remove('hidden');
+            });
+    };
+
+    // 글 삭제
+    window.deletePost = function (id) {
+        if (confirm('정말 삭제할까요?')) {
+            axios.delete(`/posts/${id}`)
+                .then(() => loadPosts());
+        }
+    };
+
+    // 상세보기 + 댓글 불러오기
+    window.viewPost = function (id) {
+        currentPostId = id;
+        axios.get(`/posts/${id}`)
+            .then(res => {
+                const post = res.data;
+                document.getElementById('detailSection').classList.remove('hidden');
+                document.getElementById('detailBox').innerHTML =
+                    `<b>ID:</b> ${post.id}<br>
+                         <b>제목:</b> ${post.title}<br>
+                         <b>내용:</b> ${post.content}<br>
+                         <b>생성:</b> ${post.createdAt}<br>
+                         <b>수정:</b> ${post.updatedAt}<br>
+                         <b>조회수:</b> ${post.viewCount ?? 0}`;
+                loadComments(id);
+            });
+    };
+
+    function closeDetail() {
+        document.getElementById('detailSection').classList.add('hidden');
+        resetCommentForm();
+        currentPostId = null;
+    }
+
+    // 수정 취소
+    document.getElementById('cancelEdit').onclick = function () {
+        resetForm();
+    };
+
+    function resetForm() {
+        document.getElementById('postId').value = '';
+        document.getElementById('title').value = '';
+        document.getElementById('content').value = '';
+        document.getElementById('cancelEdit').classList.add('hidden');
+    }
+
+    // ---------------- 댓글 기능 ----------------
+
+    // 댓글 목록 불러오기
+    function loadComments(postId) {
+        axios.get(`/posts/${postId}/comments`)
+            .then(res => {
+                const comments = res.data;
+                const tbody = document.getElementById('commentsBody');
+                tbody.innerHTML = '';
+                comments.forEach(comment => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                            <td>${comment.id}</td>
+                            <td>${comment.content}</td>
+                            <td>${comment.createdAt ? comment.createdAt.replace('T', ' ').substring(0, 19) : ''}</td>
+                            <td>${comment.updatedAt ? comment.updatedAt.replace('T', ' ').substring(0, 19) : ''}</td>
+                            <td>
+                                <button onclick="editComment(${comment.id})">수정</button>
+                                <button onclick="deleteComment(${comment.id})">삭제</button>
+                            </td>
+                        `;
+                    tbody.appendChild(tr);
+                });
+            });
+    }
+
+    // 댓글 작성/수정 폼 제출
+    document.getElementById('commentForm').onsubmit = function (e) {
+        e.preventDefault();
+        const id = document.getElementById('commentId').value;
+        const content = document.getElementById('commentContent').value;
+        if (!currentPostId) return alert('게시글을 먼저 선택하세요!');
+        if (id) {
+            // 댓글 수정
+            axios.put(`/comments/${id}`, { content })
+                .then(() => {
+                    resetCommentForm();
+                    loadComments(currentPostId);
+                });
+        } else {
+            // 새 댓글
+            axios.post(`/posts/${currentPostId}/comments`, { content })
+                .then(() => {
+                    resetCommentForm();
+                    loadComments(currentPostId);
+                });
+        }
+    };
+
+    // 댓글 수정 버튼 클릭 시
+    window.editComment = function (id) {
+        axios.get(`/comments/${id}`)
+            .then(res => {
+                const comment = res.data;
+                document.getElementById('commentId').value = comment.id;
+                document.getElementById('commentContent').value = comment.content;
+                document.getElementById('cancelCommentEdit').classList.remove('hidden');
+            });
+    };
+
+    // 댓글 삭제
+    window.deleteComment = function (id) {
+        if (confirm('댓글을 삭제할까요?')) {
+            axios.delete(`/comments/${id}`)
+                .then(() => loadComments(currentPostId));
+        }
+    };
+
+    // 댓글 수정 취소
+    document.getElementById('cancelCommentEdit').onclick = function () {
+        resetCommentForm();
+    };
+
+    function resetCommentForm() {
+        document.getElementById('commentId').value = '';
+        document.getElementById('commentContent').value = '';
+        document.getElementById('cancelCommentEdit').classList.add('hidden');
+    }
+
+    // 페이지 로드 시 게시글 목록 불러오기
+    loadPosts();
+</script>
+</body>
+
+</html>

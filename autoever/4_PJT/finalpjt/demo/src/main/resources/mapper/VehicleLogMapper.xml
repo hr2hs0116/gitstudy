@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 차량 센서 로그 MyBatis Mapper XML -->
+<!-- 현대오토에버 스마트팩토리 스쿨 강의용 -->
+<mapper namespace="com.example.demo.mapper.VehicleLogMapper">
+    
+    <!-- 결과 매핑 -->
+    <resultMap id="VehicleLogResultMap" type="com.example.demo.model.VehicleLog">
+        <id property="logId" column="log_id"/>
+        <result property="vehicleId" column="vehicle_id"/>
+        <result property="speedKmh" column="speed_kmh"/>
+        <result property="rpm" column="rpm"/>
+        <result property="fuelPercent" column="fuel_percent"/>
+        <result property="engineTemp" column="engine_temp"/>
+        <result property="timestamp" column="timestamp"/>
+    </resultMap>
+    
+    <!-- 특정 차량의 센서 로그 조회 (기간별) -->
+    <select id="selectVehicleLogsByVehicleId" resultMap="VehicleLogResultMap">
+        SELECT 
+            log_id,
+            vehicle_id,
+            speed_kmh,
+            rpm,
+            fuel_percent,
+            engine_temp,
+            timestamp
+        FROM vehicle_log
+        WHERE vehicle_id = #{vehicleId}
+        <if test="startTime != null">
+            AND timestamp >= #{startTime}
+        </if>
+        <if test="endTime != null">
+            AND timestamp &lt;= #{endTime}
+        </if>
+        ORDER BY timestamp DESC
+    </select>
+    
+    <!-- 특정 차량의 최근 센서 로그 조회 -->
+    <select id="selectRecentVehicleLogs" resultMap="VehicleLogResultMap">
+        SELECT 
+            log_id,
+            vehicle_id,
+            speed_kmh,
+            rpm,
+            fuel_percent,
+            engine_temp,
+            timestamp
+        FROM vehicle_log
+        WHERE vehicle_id = #{vehicleId}
+        ORDER BY timestamp DESC
+        LIMIT #{limit}
+    </select>
+    
+    <!-- 새로운 센서 로그 등록 -->
+    <insert id="insertVehicleLog" parameterType="com.example.demo.model.VehicleLog" 
+            useGeneratedKeys="true" keyProperty="logId">
+        INSERT INTO vehicle_log (
+            vehicle_id,
+            speed_kmh,
+            rpm,
+            fuel_percent,
+            engine_temp,
+            timestamp
+        ) VALUES (
+            #{vehicleId},
+            #{speedKmh},
+            #{rpm},
+            #{fuelPercent},
+            #{engineTemp},
+            #{timestamp}
+        )
+    </insert>
+    
+    <!-- 특정 차량의 최신 센서 데이터 조회 -->
+    <select id="selectLatestVehicleLog" parameterType="int" resultMap="VehicleLogResultMap">
+        SELECT 
+            log_id,
+            vehicle_id,
+            speed_kmh,
+            rpm,
+            fuel_percent,
+            engine_temp,
+            timestamp
+        FROM vehicle_log
+        WHERE vehicle_id = #{vehicleId}
+        ORDER BY timestamp DESC
+        LIMIT 1
+    </select>
+    
+</mapper> 

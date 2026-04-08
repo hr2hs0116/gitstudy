@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 알림 로그 MyBatis Mapper XML -->
+<!-- 현대오토에버 스마트팩토리 스쿨 강의용 -->
+<mapper namespace="com.example.demo.mapper.AlertLogMapper">
+    
+    <!-- 결과 매핑 -->
+    <resultMap id="AlertLogResultMap" type="com.example.demo.model.AlertLog">
+        <id property="alertId" column="alert_id"/>
+        <result property="vehicleId" column="vehicle_id"/>
+        <result property="message" column="message"/>
+        <result property="level" column="level"/>
+        <result property="timestamp" column="timestamp"/>
+    </resultMap>
+    
+    <!-- 특정 차량의 알림 로그 조회 -->
+    <select id="selectAlertLogsByVehicleId" parameterType="int" resultMap="AlertLogResultMap">
+        SELECT 
+            alert_id,
+            vehicle_id,
+            message,
+            level,
+            timestamp
+        FROM alert_log
+        WHERE vehicle_id = #{vehicleId}
+        ORDER BY timestamp DESC
+    </select>
+    
+    <!-- 모든 알림 로그 조회 -->
+    <select id="selectAllAlertLogs" resultMap="AlertLogResultMap">
+        SELECT 
+            alert_id,
+            vehicle_id,
+            message,
+            level,
+            timestamp
+        FROM alert_log
+        ORDER BY timestamp DESC
+    </select>
+    
+    <!-- 특정 기간의 알림 로그 조회 -->
+    <select id="selectAlertLogsByPeriod" resultMap="AlertLogResultMap">
+        SELECT 
+            alert_id,
+            vehicle_id,
+            message,
+            level,
+            timestamp
+        FROM alert_log
+        WHERE timestamp >= #{startTime}
+        AND timestamp &lt;= #{endTime}
+        ORDER BY timestamp DESC
+    </select>
+    
+    <!-- 특정 레벨의 알림 로그 조회 -->
+    <select id="selectAlertLogsByLevel" parameterType="string" resultMap="AlertLogResultMap">
+        SELECT 
+            alert_id,
+            vehicle_id,
+            message,
+            level,
+            timestamp
+        FROM alert_log
+        WHERE level = #{level}
+        ORDER BY timestamp DESC
+    </select>
+    
+    <!-- 새로운 알림 로그 등록 -->
+    <insert id="insertAlertLog" parameterType="com.example.demo.model.AlertLog" 
+            useGeneratedKeys="true" keyProperty="alertId">
+        INSERT INTO alert_log (
+            vehicle_id,
+            message,
+            level,
+            timestamp
+        ) VALUES (
+            #{vehicleId},
+            #{message},
+            #{level},
+            #{timestamp}
+        )
+    </insert>
+    
+    <!-- 알림 로그 삭제 -->
+    <delete id="deleteAlertLog" parameterType="long">
+        DELETE FROM alert_log
+        WHERE alert_id = #{alertId}
+    </delete>
+    
+</mapper> 
